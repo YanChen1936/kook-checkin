@@ -1,0 +1,47 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "要发布的 tag（例如 v7.2.0）"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install PySide6 playwright
+
+      - name: Build onedir package
+        run: python build.py
+
+      - name: Zip dist
+        run: |
+          python -c "import shutil; shutil.make_archive('kook-checkin-win64', 'zip', 'dist')"
+          python -c "import zipfile; z=zipfile.ZipFile('kook-checkin-win64.zip'); n=z.namelist(); print(len(n), 'entries'); print([x for x in n if x.endswith('.exe')][:5])"
+
+      - name: Publish release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $tag = "${{ inputs.tag }}"
+          if (-not $tag) { $tag = $env:GITHUB_REF_NAME }
+          gh release create $tag "kook-checkin-win64.zip" --title "KOOK 定时打卡 $tag" --generate-notes --repo "${{ github.repository }}"
