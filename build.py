@@ -15,6 +15,14 @@ import shutil
 import sys
 from pathlib import Path
 
+# GitHub Actions 的 Windows runner 控制台是 cp1252，打印中文会 UnicodeEncodeError；
+# 本地 cp936 控制台同样脆弱。统一把输出改 UTF-8，日志里也就不会出现乱码。
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(encoding="utf-8", errors="replace")
+    except (AttributeError, ValueError):
+        pass
+
 ROOT = Path(__file__).resolve().parent
 NAME = "KOOK打卡"
 
